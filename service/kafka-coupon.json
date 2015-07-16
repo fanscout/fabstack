@@ -1,0 +1,66 @@
+{
+    "kafka" : {
+        "instance" : [
+            {
+                "ip" : "10.0.20.32",
+                "port" : { "main" : 9101, "stat" : 9103}
+            },
+            {
+                "ip" : "10.0.20.33",
+                "port" : { "main" : 9101, "stat" : 9103}
+            },
+            {
+                "ip" : "10.0.20.34",
+                "port" : { "main" : 9101, "stat" : 9103}
+            }
+        ],
+        "config" : { "chroot" : "/kafka/%p"},
+        "relation" : {}
+    },
+
+    "zookeeper" : {
+        "instance" : [
+            {
+                "ip" : "10.0.20.32",
+                "port" : { "main" : 2181}
+            },
+            {
+                "ip" : "10.0.20.33",
+                "port" : { "main" : 2181}
+            },
+            {
+                "ip" : "10.0.20.34",
+                "port" : { "main" : 2181}
+            }
+        ],   
+        "config" : {},
+        "relation" : {}
+    },
+
+    "kafkaproxy" : {
+        "instance" : [
+            {
+                "ip" : "10.0.20.32",
+                "port" : { "main" : 9100}
+            },
+            
+            {
+                "ip" : "10.0.20.33",
+                "port" : { "main" : 9100}
+            },
+            
+            {
+                "ip" : "10.0.20.34",
+                "port" : { "main" : 9100}
+            }
+        ],
+        "config" : {},
+        "relation" : {}
+    },
+
+    "kafka-pusher" : {
+        "instance" : [],
+        "config" : {},
+        "relation" : {}
+    }
+}

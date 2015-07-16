@@ -6,6 +6,7 @@
 """
 
 import os
+import json
 from fabric.colors import *
 from fabric.api import *
 from fabric.context_managers import *
@@ -14,6 +15,11 @@ from fabric.contrib.console import confirm
 from common import *
 
 devel_clusters = ['10.0.20.32', '10.0.20.33', '10.0.20.34']
+
+
+
+
+
 
 env.user = 'work'
 env.hosts = devel_clusters
@@ -72,4 +78,9 @@ def stop(pid):
     dist = '/home/' + env.user + '/kafka-' + pid 
     with cd(dist):
 	run('bin/kafka-server-stop.sh')
+
+
+@task
+def validate(pid):
+    pass  
 

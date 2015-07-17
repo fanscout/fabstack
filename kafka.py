@@ -11,30 +11,58 @@ from fabric.colors import *
 from fabric.api import *
 from fabric.context_managers import *
 from fabric.contrib.console import confirm
-
 from common import *
 
-devel_clusters = ['10.0.20.32', '10.0.20.33', '10.0.20.34']
 
-
-
-
-
-
-env.user = 'work'
-env.hosts = devel_clusters
-env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(devel_clusters))
-env.roledefs = {
-	'zookeeper' : devel_clusters
-}
-
-env.relation = {
-	'zookeeper' : (','.join(x + ':2181' for x in devel_clusters)),
-}
-
+##
+# local configs
+##
 pkgPath = '/home/work/deploy/packages'
 cfgPath = '/home/work/deploy/config'
 port = '9092'
+
+
+##
+# load service instance, config & relation
+##
+
+jfile = open(env.inc).read()
+jdata = json.loads(jfile)
+print(jdata)
+print jdata['kafka']['instance']
+
+clusters = []
+for ins in jdata['kafka']['instance']:
+    clusters.append(ins['ip'])
+    port = str(ins['port']['main'])
+
+print green(clusters)
+
+zk_addr = []
+for ins in jdata['zookeeper']['instance']:
+    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main']))
+
+print green(zk_addr)
+
+zkAddr = (','.join(x for x in zk_addr))
+zkPath = jdata['kafka']['config']['chroot']
+
+
+##
+# setup fabric env variables
+##
+env.user = 'work'
+env.hosts = clusters
+env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(clusters))
+
+
+##
+# define standard callbacks
+# void/install/config/start/stop/relation_change
+##
+@task
+def void(pid):
+    pass  
 
 @task
 def install(pid):
@@ -50,7 +78,6 @@ def install(pid):
 	run('chmod 755 supervise')
     pass
 
-
 @task
 def config(pid):
     configDir = '/home/' + env.user + '/kafka-' + pid + '/config'
@@ -64,8 +91,7 @@ def config(pid):
     setProperty(configDir + '/server.properties', 'port=', port)
     setProperty(configDir + '/server.properties', 'host.name=', env.host_string)
     setProperty(configDir + '/server.properties', 'log.dirs=', logDir)
-    setProperty(configDir + '/server.properties', 'zookeeper.connect=', env.relation['zookeeper'] + '/kafka/' + pid)
-
+    setProperty(configDir + '/server.properties', 'zookeeper.connect=', zkAddr + zkPath + "/" + pid)
 
 @task
 def start(pid):
@@ -78,9 +104,4 @@ def stop(pid):
     dist = '/home/' + env.user + '/kafka-' + pid 
     with cd(dist):
 	run('bin/kafka-server-stop.sh')
-
-
-@task
-def validate(pid):
-    pass  
 

@@ -11,73 +11,92 @@ from fabric.colors import *
 from fabric.api import *
 from fabric.context_managers import *
 from fabric.contrib.console import confirm
-
 from common import *
 
 
-jfile = open(env.inc).read()
-jdata = json.loads(jfile)
-print(jdata)
-
-clusters = []
-for i, h in jdata['kafka-proxy']['instance']:
-    clusters.append(h['ip'])
-
-print clusters
-
-zkAddr = []
-for i, h in  jdata['zookeeper']['instance']:
-    zk_addr.append(h['ip'] + ":" + h['port']['main'])
-
-zkPath = jdata['kafka']['config']['chroot']
-
-print green(zkAddr)
-print green(zkPath)
-
-env.user = 'work'
-env.hosts = clusters
-env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(devel_clusters))
-
-
+##
+# local configs
+##
 pkgPath = '/home/work/deploy/packages'
 cfgPath = '/home/work/deploy/config'
+port = '9092'
 
+
+##
+# load service instance, config & relation
+##
+
+jfile = open(env.inc).read()
+jdata = json.loads(jfile)
+print jdata
+
+clusters = []
+for ins in jdata['kafka-proxy']['instance']:
+    clusters.append(ins['ip'])
+    port = str(ins['port']['main'])
+
+print green(clusters)
+
+zk_addr = []
+for ins in jdata['zookeeper']['instance']:
+    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main'])))))
+
+print green(zk_addr)
+
+zkAddr = (','.join(x for x in zk_addr))
+zkPath = jdata['kafka']['config']['chroot']
+
+
+##
+# setup fabric env variables
+##
+env.user = 'work'
+env.hosts = clusters
+env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(clusters))
+
+
+##
+# define standard callbacks
+# void/install/config/start/stop/relation_change
+##
+@task
+def void(pid):
+    pass  
 
 @task
 def install(pid):
-    dist = '/home/' + env.user + '/kafka-proxy-' + pid
+    dist = '/home/' + env.user + '/kafkaproxy-' + pid
     print green(dist)
     run('rm -rf ' + dist)
     run('mkdir -p ' + dist)
     put(pkgPath + '/kafka-proxy-0.1', dist)
     put(pkgPath + '/supervise', dist)
     with cd(dist):
-        run('mkdir -p bin conf log data')
-	run('mv kafka-proxy-0.1 bin/kafka-proxy')
-	run('chmod 755 supervise bin/kakka-proxy')
+        run('mkdir -p bin conf log data supervise.d')
+        run('mv kafka-proxy-0.1 bin/kafka-pusher')
+        run('chmod 755 supervise bin/kakka-pusher')
     pass
-
 
 @task
 def config(pid):
-    configDir = '/home/' + env.user + '/kafka-proxy-' + pid + '/conf'
-    logDir = '/home/' + env.user + '/kafka-proxy-' + pid + '/logs'
+    configDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/conf'
+    logDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/log'
     print green(configDir)
-    put(cfgPath + '/kafka_proxy_cfg', configDir + '/proxy.cfg')
+    put(cfgPath + '/kafkaproxy_cfg', configDir + '/proxy.cfg')
+    
+    # proxy.cfg
     setProperty(configDir + '/proxy.cfg', 'port=', port)
-    setProperty(configDir + '/proxy.cfg', 'addr=', port)
-
+    setProperty(configDir + '/proxy.cfg', 'addr=', zkAddr + zkPath + "/" + pid)
 
 @task
 def start(pid):
-    dist = '/home/' + env.user + '/kafka-proxy-' + pid 
+    dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
-	    run('bin/kafka-proxy -c conf/config.json &')
-
+	    run('./supervise supervise.d')
 
 @task
 def stop(pid):
-    dist = '/home/' + env.user + '/kafka-proxy-' + pid 
+    dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
-	    run('pkill kafka-proxy')
+	    run('bin/kafka-server-stop.sh')
 

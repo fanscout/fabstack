@@ -14,7 +14,7 @@
                 "port" : { "main" : 9101, "stat" : 9103}
             }
         ],
-        "config" : { "chroot" : "/kafka/%p"},
+        "config" : { "chroot" : "/kafka"},
         "relation" : {}
     },
 

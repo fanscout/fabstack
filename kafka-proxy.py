@@ -73,8 +73,10 @@ def install(pid):
     put(pkgPath + '/supervise', dist)
     with cd(dist):
         run('mkdir -p bin conf log data supervise.d')
-        run('mv kafka-proxy-0.1 bin/kafka-pusher')
-        run('chmod 755 supervise bin/kakka-pusher')
+        run('mv kafka-proxy-0.1 bin/kafka-proxy')
+        run('chmod 755 supervise bin/kafka-proxy')
+        run('echo "#! /bin/sh " > supervise.d/run')
+        run('echo "cd .. && bin/kafka-proxy -c conf/proxy.cfg" > supervise.d/run')
     pass
 
 @task
@@ -92,7 +94,7 @@ def config(pid):
 def start(pid):
     dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
-	    run('./supervise supervise.d')
+	    run('./supervise supervise.d &')
 
 @task
 def stop(pid):
@@ -100,3 +102,8 @@ def stop(pid):
     with cd(dist):
 	    run('bin/kafka-server-stop.sh')
 
+@task
+def restart(pid):
+    dist = '/home/' + env.user + '/kafkaproxy-' + pid
+    with cd(dist):
+        run()

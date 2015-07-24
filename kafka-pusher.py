@@ -17,8 +17,8 @@ from common import *
 ##
 # local configs
 ##
-pkgPath = '/home/work/deploy/packages'
-cfgPath = '/home/work/deploy/config'
+pkgPath = './package'
+cfgPath = './config'
 port = '9092'
 
 
@@ -39,7 +39,7 @@ print green(clusters)
 
 zk_addr = []
 for ins in jdata['zookeeper']['instance']:
-    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main'])))))
+    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main']))
 
 print green(zk_addr)
 
@@ -61,38 +61,59 @@ env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(clusters))
 ##
 @task
 def void(pid):
+    print green(get_dist(pid))
     pass  
 
 @task
 def install(pid):
-    dist = '/home/' + env.user + '/kafkapusher-' + pid
+    dist = get_dist(pid)
     print green(dist)
     run('rm -rf ' + dist)
     run('mkdir -p ' + dist)
     put(pkgPath + '/kafka-pusher-0.1', dist)
     put(pkgPath + '/supervise', dist)
     with cd(dist):
-        run('mkdir -p bin conf log data supervise.d')
-        run('mv kafka-pusher-0.1 bin/kafka-pusher')
-        run('chmod 755 supervise bin/kakka-pusher')
+        run('mkdir -p bin conf log data var')
+        run('mv kafka-pusher-0.1 bin/kafkapusher')
+        run('chmod 755 supervise bin/kafkapusher')
     pass
 
 @task
 def config(pid):
-    configDir = '/home/' + env.user + '/kafkapusher-' + pid + '/config'
-    logDir = '/home/' + env.user + '/kafkapusher-' + pid + '/logs'
-    print green(configDir)
+    dist = get_dist(pid)
+    configDir = dist + '/conf'
+    put(cfgPath + '/supervisord.conf', configDir)
+    with cd(dist):
+        content = """
+[program:kafkapusher]
+startsecs=2
+autostart=true
+autorestart=true
+command=bin/kafkapusher -c conf/config.json -log_dir=log
+"""
+        run('echo "%s" >> conf/supervisord.conf' % content)
+        run('sed -i "s/work/%s/g" conf/supervisord.conf' % dist.replace("/", "\\\\/"))
     # server.properties
 
 @task
 def start(pid):
-    dist = '/home/' + env.user + '/kafkapusher-' + pid 
-    with cd(dist):
-	    run('bin/kafka-server-start.sh -daemon config/server.properties')
+    dist = get_dist(pid)
+    with cd(dist), prefix('which superviord'):
+        run('supervisord -c conf/supervisor.conf')
+        run('supervisorctl -c conf/supervisord.conf start all')
 
 @task
 def stop(pid):
-    dist = '/home/' + env.user + '/kafkapusher-' + pid 
+    dist = get_dist(pid)
     with cd(dist):
-	    run('bin/kafka-server-stop.sh')
+        run('cat var/supervisord.pid | xargs kill -15')
+
+
+
+
+#####
+def get_dist(pid):
+    dist = '/home/' + env.user + '/kafkapusher-' + pid
+    return dist
+
 

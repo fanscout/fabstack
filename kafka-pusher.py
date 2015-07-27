@@ -31,9 +31,9 @@ jdata = json.loads(jfile)
 print jdata
 
 clusters = []
-for ins in jdata['kafka-pusher']['instance']:
+for ins in jdata['kafkapusher']['instance']:
     clusters.append(ins['ip'])
-    port = str(ins['port']['main'])
+    port = str(ins['port']['stat'])
 
 print green(clusters)
 
@@ -71,11 +71,11 @@ def install(pid):
     run('rm -rf ' + dist)
     run('mkdir -p ' + dist)
     put(pkgPath + '/kafka-pusher-0.1', dist)
-    put(pkgPath + '/supervise', dist)
+    #put(pkgPath + '/supervise', dist)
     with cd(dist):
         run('mkdir -p bin conf log data var')
         run('mv kafka-pusher-0.1 bin/kafkapusher')
-        run('chmod 755 supervise bin/kafkapusher')
+        #run('chmod 755 supervise bin/kafkapusher')
     pass
 
 @task
@@ -92,7 +92,7 @@ autorestart=true
 command=bin/kafkapusher -c conf/config.json -log_dir=log
 """
         run('echo "%s" >> conf/supervisord.conf' % content)
-        run('sed -i "s/work/%s/g" conf/supervisord.conf' % dist.replace("/", "\\\\/"))
+        run('sed -i \'s/${OSP_ROOT}/%s/g\' conf/supervisord.conf' % dist.replace("/", "\\/"))
     # server.properties
 
 @task

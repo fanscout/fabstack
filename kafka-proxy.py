@@ -17,8 +17,8 @@ from common import *
 ##
 # local configs
 ##
-pkgPath = '/home/work/deploy/packages'
-cfgPath = '/home/work/deploy/config'
+pkgPath = './package'
+cfgPath = './config'
 port = '9092'
 
 
@@ -31,7 +31,7 @@ jdata = json.loads(jfile)
 print jdata
 
 clusters = []
-for ins in jdata['kafka-proxy']['instance']:
+for ins in jdata['kafkaproxy']['instance']:
     clusters.append(ins['ip'])
     port = str(ins['port']['main'])
 
@@ -39,7 +39,7 @@ print green(clusters)
 
 zk_addr = []
 for ins in jdata['zookeeper']['instance']:
-    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main'])))))
+    zk_addr.append(ins['ip'] + ":" + str(ins['port']['main']))
 
 print green(zk_addr)
 
@@ -71,16 +71,18 @@ def install(pid):
     run('mkdir -p ' + dist)
     put(pkgPath + '/kafka-proxy-0.1', dist)
     with cd(dist):
-        run('mkdir -p bin conf log data supervise.d')
+        run('mkdir -p bin conf log data var')
         run('mv kafka-proxy-0.1 bin/kafkaproxy')
     pass
 
 @task
 def config(pid):
+    dist = get_dist(pid)
     configDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/conf'
     logDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/log'
     print green(configDir)
     put(cfgPath + '/kafkaproxy_cfg', configDir + '/proxy.cfg')
+    put(cfgPath + '/supervisord.conf', configDir)
     # proxy.cfg
     setProperty(configDir + '/proxy.cfg', 'port=', port)
     setProperty(configDir + '/proxy.cfg', 'addr=', zkAddr + zkPath + "/" + pid)
@@ -93,6 +95,7 @@ autorestart=true
 command=bin/kafkaproxy -c conf/proxy.cfg
 """
         run('echo "%s" >> conf/supervisord.conf' % content)
+        run('sed -i \'s/${OSP_ROOT}/%s/g\' conf/supervisord.conf' % dist.replace("/", "\\/"))
 
 @task
 def start(pid):
@@ -106,5 +109,11 @@ def stop(pid):
     dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
 	    run('cat var/supervisord.pid | xargs kill -15')
+
+#####
+
+def get_dist(pid):
+    dist =  '/home/' + env.user + '/kafkaproxy-' + pid
+    return dist
 
 

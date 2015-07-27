@@ -1,14 +1,14 @@
 #http server(proxy server)配置
 [server]
 port=
-rtimeout=500                #读超时，单位: ms
-wtimeout=500                #写超时，单位: ms
-maxHeaderBytes=1048576      #http header最大容量，单位: byte
-keepAlive=off               # http server是否keep alive
+rtimeout=500             
+wtimeout=500              
+maxHeaderBytes=1048576     
+keepAlive=off               
 
 [zookeeper]
 addr=
-ctimeout=1                  #zk连接超时，单位：sec
+ctimeout=1                  #zookeeper connect timeout sec
 
 [producer]
 ctimeout=50                 #proxy和kafka broker的连接超时，单位: ms

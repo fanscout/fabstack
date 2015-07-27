@@ -12,7 +12,7 @@ from fabric.context_managers import *
 
 def setProperty(fname, prop, value):
     with settings(warn_only=True):
-        result = run("nl %s | grep '%s' | awk '{print $1}'" % (fname, prop))
+        result = run("grep -n '%s' %s | awk -F: '{print $1}'" % (prop, fname))
     if result == '':
         run("sed -i '$i %s' %s" % (prop + value, fname))
     else:

@@ -97,7 +97,7 @@ def config(pid):
 def start(pid):
     dist = '/home/' + env.user + '/kafka-' + pid 
     with cd(dist):
-	run('bin/kafka-server-start.sh -daemon config/server.properties')
+	    run('bin/kafka-server-start.sh -daemon config/server.properties')
 
 @task
 def stop(pid):

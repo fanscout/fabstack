@@ -28,10 +28,11 @@ port = '9092'
 
 jfile = open(env.inc).read()
 jdata = json.loads(jfile)
-print jdata
+print(jdata)
+print jdata['kafka']['instance']
 
 clusters = []
-for ins in jdata['kafkaproxy']['instance']:
+for ins in jdata['zookeeper']['instance']:
     clusters.append(ins['ip'])
     port = str(ins['port']['main'])
 
@@ -55,6 +56,11 @@ env.hosts = clusters
 env.hostnames = dict([h, '%d' % (i + 1)] for i, h in enumerate(clusters))
 
 
+print env.hostnames
+
+
+
+
 ##
 # define standard callbacks
 # void/install/config/start/stop/relation_change
@@ -65,56 +71,68 @@ def void(pid):
 
 @task
 def install(pid):
-    dist = '/home/' + env.user + '/kafkaproxy-' + pid
+    dist = get_dist(pid)
     print green(dist)
     run('rm -rf ' + dist)
     run('mkdir -p ' + dist)
-    put(pkgPath + '/kafka-proxy-0.1', dist)
+    put(pkgPath + '/zookeeper-3.4.6.tar.gz', dist)
     with cd(dist):
-        run('mkdir -p bin conf log data var')
-        run('mv kafka-proxy-0.1 bin/kafkaproxy')
-        run('chmod 755 bin/kafkaproxy')
+        run('tar zxvf zookeeper-3.4.6.tar.gz')
+        run('mv zookeeper-3.4.6/{bin,conf,lib,src} . ')
+        run('mv zookeeper-3.4.6/zookeeper-3.4.6.jar lib && rm -rf ' + dist + '/zookeeper-3.4.6*')
+        run('mkdir data var log')
     pass
 
 @task
 def config(pid):
     dist = get_dist(pid)
-    configDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/conf'
-    logDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/log'
+    configDir = dist + '/conf'
+    logDir = dist + 'log'
     print green(configDir)
-    put(cfgPath + '/kafkaproxy_cfg', configDir + '/proxy.cfg')
     put(cfgPath + '/supervisor.conf', configDir)
-    # proxy.cfg
-    setProperty(configDir + '/proxy.cfg', 'port=', port)
-    setProperty(configDir + '/proxy.cfg', 'addr=', zkAddr + zkPath + "/" + pid)
 
     with cd(dist):
-        content = """[program:kafkaproxy]
+        run('cp conf/zoo_sample.cfg conf/zoo.cfg')
+        run('echo "# cluster mode" >> conf/zoo.cfg')
+
+        # cluster mode
+        for h in env.hostnames:
+            print red('echo "server.' + env.hostnames[h][:] + '=' + h + ':2888:3888" >> conf/zoo.cfg')
+            run('echo "server.' + env.hostnames[h][:] + '=' + h + ':2888:3888" >> conf/zoo.cfg')
+
+        # data/myid
+        run('echo "' + env.hostnames[env.host_string] + '" > data/myid')
+
+    # server.properties
+    setProperty(configDir + '/zoo.cfg', 'dataDir=', dist + '/data')
+    setProperty(configDir + '/zoo.cfg', 'clientPort=', port)
+
+    # supervisord.conf
+    content = """[program:zookeeper]
 startsecs=2
 autostart=true
 autorestart=true
-command=bin/kafkaproxy -c conf/proxy.cfg
+command=bin/zkServer.sh start 
 """
+    with cd(dist):
         run('echo "%s" >> conf/supervisor.conf' % content)
         run('sed -i \'s/${OSP_ROOT}/%s/g\' conf/supervisor.conf' % dist.replace("/", "\\/"))
+    #server config end
+
 
 @task
 def start(pid):
-    dist = '/home/' + env.user + '/kafkaproxy-' + pid 
+    dist = get_dist(pid)
     with cd(dist):
         run('supervisord -c conf/supervisor.conf')
         run('supervisorctl -c conf/supervisor.conf start all')
 
 @task
 def stop(pid):
-    dist = '/home/' + env.user + '/kafkaproxy-' + pid 
+    dist = get_dist(pid)
     with cd(dist):
-	    run('cat var/supervisord.pid | xargs kill -15')
+        run('cat var/supervisord.pid | xargs kill -15')
 
-#####
 
 def get_dist(pid):
-    dist =  '/home/' + env.user + '/kafkaproxy-' + pid
-    return dist
-
-
+    return '/home/work/zookeeper'

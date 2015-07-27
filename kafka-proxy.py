@@ -70,13 +70,9 @@ def install(pid):
     run('rm -rf ' + dist)
     run('mkdir -p ' + dist)
     put(pkgPath + '/kafka-proxy-0.1', dist)
-    put(pkgPath + '/supervise', dist)
     with cd(dist):
         run('mkdir -p bin conf log data supervise.d')
-        run('mv kafka-proxy-0.1 bin/kafka-proxy')
-        run('chmod 755 supervise bin/kafka-proxy')
-        run('echo "#! /bin/sh " > supervise.d/run')
-        run('echo "cd .. && bin/kafka-proxy -c conf/proxy.cfg" > supervise.d/run')
+        run('mv kafka-proxy-0.1 bin/kafkaproxy')
     pass
 
 @task
@@ -85,25 +81,30 @@ def config(pid):
     logDir = '/home/' + env.user + '/kafkaproxy-' + pid + '/log'
     print green(configDir)
     put(cfgPath + '/kafkaproxy_cfg', configDir + '/proxy.cfg')
-    
     # proxy.cfg
     setProperty(configDir + '/proxy.cfg', 'port=', port)
     setProperty(configDir + '/proxy.cfg', 'addr=', zkAddr + zkPath + "/" + pid)
+
+    with cd(dist):
+        content = """[program:kafkaproxy]
+startsecs=2
+autostart=true
+autorestart=true
+command=bin/kafkaproxy -c conf/proxy.cfg
+"""
+        run('echo "%s" >> conf/supervisord.conf' % content)
 
 @task
 def start(pid):
     dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
-	    run('./supervise supervise.d &')
+        run('supervisord -c conf/supervisor.conf')
+        run('supervisorctl -c conf/supervisord.conf start all')
 
 @task
 def stop(pid):
     dist = '/home/' + env.user + '/kafkaproxy-' + pid 
     with cd(dist):
-	    run('bin/kafka-server-stop.sh')
+	    run('cat var/supervisord.pid | xargs kill -15')
 
-@task
-def restart(pid):
-    dist = '/home/' + env.user + '/kafkaproxy-' + pid
-    with cd(dist):
-        run()
+

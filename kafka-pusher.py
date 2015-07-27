@@ -98,7 +98,7 @@ command=bin/kafkapusher -c conf/config.json -log_dir=log
 @task
 def start(pid):
     dist = get_dist(pid)
-    with cd(dist), prefix('which superviord'):
+    with cd(dist):
         run('supervisord -c conf/supervisor.conf')
         run('supervisorctl -c conf/supervisord.conf start all')
 
@@ -107,8 +107,6 @@ def stop(pid):
     dist = get_dist(pid)
     with cd(dist):
         run('cat var/supervisord.pid | xargs kill -15')
-
-
 
 
 #####
